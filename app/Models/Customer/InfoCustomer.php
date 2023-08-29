@@ -15,5 +15,6 @@ class InfoCustomer extends Model
         'loai_dv',
         'phone',
         'email',
+        'folder_id'
     ];
 }

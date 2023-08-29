@@ -21,6 +21,7 @@
                 <th>Số Điện Thoại</th>
                 <th>Email</th>
                 <th>Địa chỉ</th>
+                <th>Hồ sơ</th>
                 <th></th>
             </tr>
         </thead>
@@ -34,6 +35,11 @@
                         <td class="align-middle">{{ $cus->phone }}</td>
                         <td class="align-middle">{{ $cus->email }}</td>
                         <td class="align-middle">{{ $cus->address}}</td>
+                        <td class="align-middle">
+                            <div class="btn-group">
+                                <a href="{{route('customer.listFile',$cus->folder_id)}}" type="button" class="btn btn-success">Xem</a>
+                            </div>
+                        </td>
                         <td class="align-middle">
                             <div class="btn-group" role="group" aria-label="Basic example">
                                 <a href="#" type="button" class="btn btn-secondary">Detail</a>

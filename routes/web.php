@@ -4,6 +4,8 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Employees\CategoryEmployeeController;
 use App\Http\Controllers\Employees\EmployeeController;
+use App\Http\Controllers\Files\FilesController;
+use App\Http\Controllers\Files\GoogleDriveController;
 use App\Models\CategoryEmployee;
 use App\Models\Customer\InfoCustomer;
 use App\Models\Employee;
@@ -32,6 +34,10 @@ Route::controller(AuthController::class)->group(function () {
     Route::get('logout', 'logout')->middleware('auth')->name('logout');
 });
 Route::middleware('auth')->group(function () {
+    Route::get('google/login', [GoogleDriveController::class, 'googleLogin'])->name('google.login');
+    Route::get('google-drive/create-folder', [GoogleDriveController::class, 'googleDriveCreateFolder'])->name('google.drive.create.folder');
+    Route::get('google-drive/fetchFolder', [GoogleDriveController::class, 'fetchAppDataFolder'])->name('google.drive.folder.fetch');
+    Route::get('google-drive/file-upload', [GoogleDriveController::class, 'googleDriveFilePpload'])->name('google.drive.file.upload');
     Route::get('dashboard', function () {
         $employee = Employee::orderBy('id', 'asc')->get();
         $customer = InfoCustomer::orderBy('id', 'asc')->get();
@@ -56,7 +62,11 @@ Route::middleware('auth')->group(function () {
     });
     Route::controller(CustomerController::class)->prefix('customer')->group(function () {
         Route::get('', 'index')->name('customer');
+        Route::get('listFile/{folder_id}', [GoogleDriveController::class, 'listFile'])->name('customer.listFile');
+        Route::get('exportFile/{file_id}', 'exportFile')->name('customer.file.export');
         Route::get('create', 'create')->name('customer.create');
         Route::post('store', 'store')->name('customer.store');
     });
+    Route::get('/file', [FilesController::class, 'index'])->name('file');
+    // Route::get('/login', [AuthManager::class, 'login'])->name('login');
 });
