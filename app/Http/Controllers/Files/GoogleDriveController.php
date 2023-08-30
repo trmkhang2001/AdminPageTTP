@@ -14,6 +14,14 @@ use function Ramsey\Uuid\v1;
 
 class GoogleDriveController extends Controller
 {
+    // GOOGLE_DRIVE_CLIENT_ID=XXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com
+    // GOOGLE_DRIVE_CLIENT_SECRET=XXXX_ByGjXXXXX
+    // GOOGLE_DRIVE_REFRESH_TOKEN=XXXXXXXXXXXXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXT1J1S5-Bv51KAUWR49M6jKmOXXXXXXXXXXX
+    const GOOGLE_DRIVE_CLIENT_ID = '1091359250863-m7kesaujlcpgje4vvckph3dak496u56s.apps.googleusercontent.com';
+    const GOOGLE_DRIVE_CLIENT_SECRET = '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';
+    const GOOGLE_DRIVE_DEVELOPER_KEY = 'AIzaSyB3bTFWcfDr_9rDrp3hkrbGRaOEHYi6udo';
+    const GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'];
+
     public $gClient;
 
     function __construct()
@@ -22,14 +30,11 @@ class GoogleDriveController extends Controller
         $this->gClient = new \Google_Client();
 
         $this->gClient->setApplicationName('CongTyTTP'); // ADD YOUR AUTH2 APPLICATION NAME (WHEN YOUR GENERATE SECRATE KEY)
-        $this->gClient->setClientId('1091359250863-m7kesaujlcpgje4vvckph3dak496u56s.apps.googleusercontent.com');
-        $this->gClient->setClientSecret('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');
+        $this->gClient->setClientId(GoogleDriveController::GOOGLE_DRIVE_CLIENT_ID);
+        $this->gClient->setClientSecret(GoogleDriveController::GOOGLE_DRIVE_CLIENT_SECRET);
         $this->gClient->setRedirectUri(route('google.login'));
-        $this->gClient->setDeveloperKey('AIzaSyB3bTFWcfDr_9rDrp3hkrbGRaOEHYi6udo');
-        $this->gClient->setScopes(array(
-            'https://www.googleapis.com/auth/drive.file',
-            'https://www.googleapis.com/auth/drive'
-        ));
+        $this->gClient->setDeveloperKey(GoogleDriveController::GOOGLE_DRIVE_DEVELOPER_KEY);
+        $this->gClient->setScopes(GoogleDriveController::GOOGLE_SCOPES);
 
         $this->gClient->setAccessType("offline");
 
@@ -71,6 +76,62 @@ class GoogleDriveController extends Controller
             return redirect()->to($authUrl);
         }
     }
+    public function getParentFolderId(string $fileId)
+    {
+        $service = new \Google\Service\Drive($this->gClient);
+
+        $file = $service->files->get($fileId, array('fields' => 'parents'));
+        $rootId = $service->files->get('root')->getId();
+
+        $parents = $file->getParents();
+        if (!empty($parents)) {
+            $parent = $parents[0];
+            if (strcmp($rootId, $parent) == 0) {
+                return null;
+            }
+            return $parent;
+        } else {
+            return null;
+        }
+    }
+    public function upPermission(string $emailUser, string $folderId)
+    {
+        $service = new \Google\Service\Drive($this->gClient);
+
+        $user = User::find(1);
+
+        $this->gClient->setAccessToken(json_decode($user->access_token, true));
+
+        if ($this->gClient->isAccessTokenExpired()) {
+
+            // SAVE REFRESH TOKEN TO SOME VARIABLE
+            $refreshTokenSaved = $this->gClient->getRefreshToken();
+
+            // UPDATE ACCESS TOKEN
+            $this->gClient->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
+
+            // PASS ACCESS TOKEN TO SOME VARIABLE
+            $updatedAccessToken = $this->gClient->getAccessToken();
+
+            // APPEND REFRESH TOKEN
+            $updatedAccessToken['refresh_token'] = $refreshTokenSaved;
+
+            // SET THE NEW ACCES TOKEN
+            $this->gClient->setAccessToken($updatedAccessToken);
+
+            $user->access_token = $updatedAccessToken;
+
+            $user->save();
+        }
+        // Create a new permission
+        $permission = new \Google\Service\Drive\Permission();
+        $permission->setEmailAddress($emailUser);
+        $permission->setType('user');
+        $permission->setRole('writer');
+
+        // Insert the permission
+        $result = $service->permissions->create($folderId, $permission);
+    }
     public function listFile(string $folder_id)
     {
         $service = new \Google\Service\Drive($this->gClient);
@@ -109,8 +170,8 @@ class GoogleDriveController extends Controller
             'supportsAllDrives' => 'true'
         );
         $files = $service->files->listFiles($optParams);
-        $folder = Folder::where('folder_id', $folder_id)->get();
-        return view('customer.listFile', compact('files', 'folder'));
+        $parentsId = GoogleDriveController::getParentFolderId($folder_id);
+        return view('customer.listFile', compact('files', 'parentsId'));
     }
 
     // public function fetchAppDataFolder()

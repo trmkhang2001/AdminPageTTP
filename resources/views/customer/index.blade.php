@@ -22,7 +22,6 @@
                 <th>Email</th>
                 <th>Địa chỉ</th>
                 <th>Hồ sơ</th>
-                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -40,9 +39,9 @@
                                 <a href="{{route('customer.listFile',$cus->folder_id)}}" type="button" class="btn btn-success">Xem</a>
                             </div>
                         </td>
-                        <td class="align-middle">
+                        {{-- <td class="align-middle">
                             <div class="btn-group" role="group" aria-label="Basic example">
-                                <a href="#" type="button" class="btn btn-secondary">Detail</a>
+                                <a href="{{route('customer.drive.uppermission',['jclove.comehere@gmail.com',$cus->folder_id])}}" type="button" class="btn btn-secondary">Cấp quyền</a>
                                 <a href="#" type="button" class="btn btn-warning">Edit</a>
                                 <form action="#" method="POST" type="button" class="btn btn-danger p-0" onsubmit="return confirm('Bạn chắc chắn muốn xóa ?')">
                                     @csrf
@@ -50,7 +49,7 @@
                                     <button class="btn btn-danger m-0">Delete</button>
                                 </form>
                             </div>
-                        </td>
+                        </td> --}}
                     </tr>
                 @endforeach
             @else

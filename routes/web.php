@@ -62,10 +62,14 @@ Route::middleware('auth')->group(function () {
     });
     Route::controller(CustomerController::class)->prefix('customer')->group(function () {
         Route::get('', 'index')->name('customer');
-        Route::get('listFile/{folder_id}', [GoogleDriveController::class, 'listFile'])->name('customer.listFile');
+        // Route::get('listFile/{folder_id}', [GoogleDriveController::class, 'listFile'])->name('customer.listFile');
         Route::get('exportFile/{file_id}', 'exportFile')->name('customer.file.export');
         Route::get('create', 'create')->name('customer.create');
         Route::post('store', 'store')->name('customer.store');
+        Route::controller(GoogleDriveController::class)->prefix('drive')->group(function () {
+            Route::get('listFile/{folder_id}', 'listFile')->name('customer.listFile');
+            Route::get('upPermission/[{emailUser},{folderId}]', 'upPermission')->name('customer.drive.uppermission');
+        });
     });
     Route::get('/file', [FilesController::class, 'index'])->name('file');
     // Route::get('/login', [AuthManager::class, 'login'])->name('login');
