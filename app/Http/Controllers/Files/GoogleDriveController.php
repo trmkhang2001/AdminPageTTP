@@ -7,39 +7,20 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Files\Folder;
 use Exception;
+use finfo;
 use Google\Client;
 use Google\Service\Drive;
+use Illuminate\Support\Facades\Validator;
+use App\Http\Traits;
+use App\Http\Traits\FileTrait;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 
 use function Ramsey\Uuid\v1;
 
 class GoogleDriveController extends Controller
 {
-    // GOOGLE_DRIVE_CLIENT_ID=XXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com
-    // GOOGLE_DRIVE_CLIENT_SECRET=XXXX_ByGjXXXXX
-    // GOOGLE_DRIVE_REFRESH_TOKEN=XXXXXXXXXXXXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXT1J1S5-Bv51KAUWR49M6jKmOXXXXXXXXXXX
-    const GOOGLE_DRIVE_CLIENT_ID = '1091359250863-m7kesaujlcpgje4vvckph3dak496u56s.apps.googleusercontent.com';
-    const GOOGLE_DRIVE_CLIENT_SECRET = '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';
-    const GOOGLE_DRIVE_DEVELOPER_KEY = 'AIzaSyB3bTFWcfDr_9rDrp3hkrbGRaOEHYi6udo';
-    const GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'];
-
-    public $gClient;
-
-    function __construct()
-    {
-
-        $this->gClient = new \Google_Client();
-
-        $this->gClient->setApplicationName('CongTyTTP'); // ADD YOUR AUTH2 APPLICATION NAME (WHEN YOUR GENERATE SECRATE KEY)
-        $this->gClient->setClientId(GoogleDriveController::GOOGLE_DRIVE_CLIENT_ID);
-        $this->gClient->setClientSecret(GoogleDriveController::GOOGLE_DRIVE_CLIENT_SECRET);
-        $this->gClient->setRedirectUri(route('google.login'));
-        $this->gClient->setDeveloperKey(GoogleDriveController::GOOGLE_DRIVE_DEVELOPER_KEY);
-        $this->gClient->setScopes(GoogleDriveController::GOOGLE_SCOPES);
-
-        $this->gClient->setAccessType("offline");
-
-        $this->gClient->setApprovalPrompt("force");
-    }
+    use FileTrait;
 
     public function googleLogin(Request $request)
     {
@@ -97,32 +78,7 @@ class GoogleDriveController extends Controller
     public function upPermission(string $emailUser, string $folderId)
     {
         $service = new \Google\Service\Drive($this->gClient);
-
-        $user = User::find(1);
-
-        $this->gClient->setAccessToken(json_decode($user->access_token, true));
-
-        if ($this->gClient->isAccessTokenExpired()) {
-
-            // SAVE REFRESH TOKEN TO SOME VARIABLE
-            $refreshTokenSaved = $this->gClient->getRefreshToken();
-
-            // UPDATE ACCESS TOKEN
-            $this->gClient->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
-
-            // PASS ACCESS TOKEN TO SOME VARIABLE
-            $updatedAccessToken = $this->gClient->getAccessToken();
-
-            // APPEND REFRESH TOKEN
-            $updatedAccessToken['refresh_token'] = $refreshTokenSaved;
-
-            // SET THE NEW ACCES TOKEN
-            $this->gClient->setAccessToken($updatedAccessToken);
-
-            $user->access_token = $updatedAccessToken;
-
-            $user->save();
-        }
+        $this->OAuth2();
         // Create a new permission
         $permission = new \Google\Service\Drive\Permission();
         $permission->setEmailAddress($emailUser);
@@ -135,32 +91,7 @@ class GoogleDriveController extends Controller
     public function listFile(string $folder_id)
     {
         $service = new \Google\Service\Drive($this->gClient);
-
-        $user = User::find(1);
-
-        $this->gClient->setAccessToken(json_decode($user->access_token, true));
-
-        if ($this->gClient->isAccessTokenExpired()) {
-
-            // SAVE REFRESH TOKEN TO SOME VARIABLE
-            $refreshTokenSaved = $this->gClient->getRefreshToken();
-
-            // UPDATE ACCESS TOKEN
-            $this->gClient->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
-
-            // PASS ACCESS TOKEN TO SOME VARIABLE
-            $updatedAccessToken = $this->gClient->getAccessToken();
-
-            // APPEND REFRESH TOKEN
-            $updatedAccessToken['refresh_token'] = $refreshTokenSaved;
-
-            // SET THE NEW ACCES TOKEN
-            $this->gClient->setAccessToken($updatedAccessToken);
-
-            $user->access_token = $updatedAccessToken;
-
-            $user->save();
-        }
+        $this->OAuth2();
         $optParams = array(
             'corpora' => "allDrives",
             'pageSize' => 100,
@@ -171,106 +102,65 @@ class GoogleDriveController extends Controller
         );
         $files = $service->files->listFiles($optParams);
         $parentsId = GoogleDriveController::getParentFolderId($folder_id);
-        return view('customer.listFile', compact('files', 'parentsId'));
+        return view('customer.listFile', compact('files', 'parentsId', 'folder_id'));
     }
-
-    // public function fetchAppDataFolder()
-    // {
-    //     $service = new \Google\Service\Drive($this->gClient);
-
-    //     $user = User::find(1);
-
-    //     $this->gClient->setAccessToken(json_decode($user->access_token, true));
-
-    //     if ($this->gClient->isAccessTokenExpired()) {
-
-    //         // SAVE REFRESH TOKEN TO SOME VARIABLE
-    //         $refreshTokenSaved = $this->gClient->getRefreshToken();
-
-    //         // UPDATE ACCESS TOKEN
-    //         $this->gClient->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
-
-    //         // PASS ACCESS TOKEN TO SOME VARIABLE
-    //         $updatedAccessToken = $this->gClient->getAccessToken();
-
-    //         // APPEND REFRESH TOKEN
-    //         $updatedAccessToken['refresh_token'] = $refreshTokenSaved;
-
-    //         // SET THE NEW ACCES TOKEN
-    //         $this->gClient->setAccessToken($updatedAccessToken);
-
-    //         $user->access_token = $updatedAccessToken;
-
-    //         $user->save();
-    //     }
-
-    //     try {
-    //         $folder = array();
-    //         $pageToken = null;
-    //         do {
-    //             $response = $service->files->get(array(
-    //                 'q' => "application/vnd.google-apps.folder",
-    //                 'spaces' => 'drive',
-    //                 'pageToken' => $pageToken,
-    //                 'fields' => 'nextPageToken, files(id, name)',
-    //             ));
-    //             foreach ($response->folder as $folder) {
-    //                 printf("Found file: %s (%s)\n", $folder->name, $folder->id);
-    //             }
-    //             array_push($folder, $response->files);
-
-    //             $pageToken = $response->pageToken;
-    //         } while ($pageToken != null);
-    //         return $folder;
-    //     } catch (Exception $e) {
-    //         echo "Error Message: " . $e;
-    //     }
-    // }
-
-    // public function googleDriveFilePpload()
-    // {
-    //     $service = new \Google\Service\Drive($this->gClient);
-
-    //     $user = User::find(1);
-
-    //     $this->gClient->setAccessToken(json_decode($user->access_token, true));
-
-    //     if ($this->gClient->isAccessTokenExpired()) {
-
-    //         // SAVE REFRESH TOKEN TO SOME VARIABLE
-    //         $refreshTokenSaved = $this->gClient->getRefreshToken();
-
-    //         // UPDATE ACCESS TOKEN
-    //         $this->gClient->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
-
-    //         // PASS ACCESS TOKEN TO SOME VARIABLE
-    //         $updatedAccessToken = $this->gClient->getAccessToken();
-
-    //         // APPEND REFRESH TOKEN
-    //         $updatedAccessToken['refresh_token'] = $refreshTokenSaved;
-
-    //         // SET THE NEW ACCES TOKEN
-    //         $this->gClient->setAccessToken($updatedAccessToken);
-
-    //         $user->access_token = $updatedAccessToken;
-
-    //         $user->save();
-    //     }
-    //     try {
-    //         $fileMetadata = new Drive\DriveFile(array(
-    //             'name' => 'photo.jpg'
-    //         ));
-    //         $content = file_get_contents('../public/Screenshot_1.png');
-    //         $file = $service->files->create($fileMetadata, array(
-    //             'data' => $content,
-    //             'mimeType' => 'image/jpeg',
-    //             'uploadType' => 'multipart',
-    //             'fields' => 'id'
-    //         ));
-    //         printf("File ID: %s\n", $file->id);
-    //         return $file->id;
-    //     } catch (Exception $e) {
-    //         echo "Error Message: " . $e;
-    //     }
-    // }
+    public function searchNameFile(Request $request)
+    {
+        $service = new \Google\Service\Drive($this->gClient);
+        $this->OAuth2();
+        // Tìm kiếm tệp tin với tên
+        $search  = "";
+        $search = $request->input('search');
+        $folder_id = $request->input('folder_id');
+        $parentsId = GoogleDriveController::getParentFolderId($folder_id);
+        $files = null;
+        if ($search != "") {
+            $optParams = array(
+                'pageSize' => 100,
+                'fields' => "nextPageToken, files(contentHints/thumbnail,fileExtension,iconLink,id,name,size,thumbnailLink,webContentLink,webViewLink,mimeType,parents,modifiedTime)",
+                'q' => "name contains '" . $search . "'",
+                'includeItemsFromAllDrives' => 'true',
+                'supportsAllDrives' => 'true'
+            );
+            $files = $service->files->listFiles($optParams);
+        }
+        // Trả về tên tệp tin
+        return view('customer.listFile', compact('files', 'parentsId', 'folder_id', 'search'));
+    }
+    public function googleDriveFileUpload(Request $request)
+    {
+        $service = new \Google\Service\Drive($this->gClient);
+        $this->OAuth2();
+        try {
+            if ($request->hasFile('file')) {
+                $file = $request->file('fileup');
+                $folder_id = $request->input('forder_id');
+                $fileMetadata = new \Google\Service\Drive\DriveFile([
+                    'name' => $_FILES['file']['name'],
+                    'minType' => $_FILES['file']['type'],
+                    'parents' => [$folder_id],
+                ]);
+                $file = $_FILES['file']['tmp_name'];
+                $service->files->create($fileMetadata, array(
+                    'data' => file_get_contents($file),
+                    'uploadType' => 'multipart',
+                ));
+                return redirect()->back()->with('success', 'Upload file thành công');
+            }
+            return redirect()->back()->with('error', 'Vui lòng chọn file upload');
+        } catch (Exception $e) {
+            echo "Error Message: " . $e;
+        }
+    }
+    public function googleDriveCreateFolder(Request $request)
+    {
+        if (!empty($request->input('forder_name'))) {
+            $parent_id = $request->input('parent_id');
+            $forlder_name = $request->input('forder_name');
+            if ($this->driveCreateFolderInFolder($forlder_name, $parent_id)) {
+                return redirect()->back()->with('success', 'Tạo folder thành công');
+            };
+        }
+        return redirect()->back()->with('error', 'Vui lòng nhập tên folder');
+    }
 }

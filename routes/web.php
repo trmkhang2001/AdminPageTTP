@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('auth.login');
 });
 Route::controller(AuthController::class)->group(function () {
     Route::get('login', 'login')->name('login');
@@ -69,6 +69,9 @@ Route::middleware('auth')->group(function () {
         Route::controller(GoogleDriveController::class)->prefix('drive')->group(function () {
             Route::get('listFile/{folder_id}', 'listFile')->name('customer.listFile');
             Route::get('upPermission/[{emailUser},{folderId}]', 'upPermission')->name('customer.drive.uppermission');
+            Route::post('upload', 'googleDriveFileUpload')->name('customer.drive.upload');
+            Route::post('create', 'googleDriveCreateFolder')->name('customer.drive.createFolder');
+            Route::post('search', 'searchNameFile')->name('customer.drive.search');
         });
     });
     Route::get('/file', [FilesController::class, 'index'])->name('file');
